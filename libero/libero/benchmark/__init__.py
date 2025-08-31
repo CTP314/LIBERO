@@ -161,7 +161,10 @@ class Benchmark(abc.ABC):
             self.tasks[i].problem_folder,
             self.tasks[i].init_states_file,
         )
-        init_states = torch.load(init_states_path, weights_only=False)
+        if torch.__version__ >= "2.2.0":
+            init_states = torch.load(init_states_path, weights_only=False)
+        else:
+            init_states = torch.load(init_states_path)
         return init_states
 
     def set_task_embs(self, task_embs):
