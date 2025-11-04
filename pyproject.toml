@@ -44,6 +44,9 @@ dependencies = [
 "libero.config_copy" = "scripts.config_copy:main"
 "libero.create_template" = "scripts.create_template:main"
 
+[tool.setuptools]
+package-data = { "libero" = ["assets/*", "bddl_files/*", "init_files/*"] }
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
