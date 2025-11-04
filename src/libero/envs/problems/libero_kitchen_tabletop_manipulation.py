@@ -9,14 +9,14 @@ from libero.envs.utils import rectangle2xyrange
 
 
 @register_problem
-class YOUR_CLASS_NAME(BDDLBaseDomain):
+class Libero_Kitchen_Tabletop_Manipulation(BDDLBaseDomain):
     def __init__(self, bddl_file_name, *args, **kwargs):
-
-        # Configure the workspace
         self.workspace_name = "kitchen_table"
         self.visualization_sites_list = []
-
-        self.kitchen_table_full_size = (1.0, 1.2, 0.05)
+        if "table_full_size" in kwargs:
+            self.kitchen_table_full_size = table_full_size
+        else:
+            self.kitchen_table_full_size = (1.0, 1.2, 0.05)
         self.kitchen_table_offset = (0.0, 0, 0.90)
         # For z offset of environment fixtures
         self.z_offset = 0.01 - self.kitchen_table_full_size[2]
@@ -25,14 +25,11 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         )
         kwargs.update({"workspace_offset": self.kitchen_table_offset})
         kwargs.update({"arena_type": "kitchen"})
-
-        # Specify the scene xml and scene properties. Specify the default here since not many people would need to change this actively.
         if "scene_xml" not in kwargs or kwargs["scene_xml"] is None:
             kwargs.update(
                 {"scene_xml": "scenes/libero_kitchen_tabletop_base_style.xml"}
             )
         if "scene_properties" not in kwargs or kwargs["scene_properties"] is None:
-            # The scene properties need to be specified in libero/envs/arenas/style.py.
             kwargs.update(
                 {
                     "scene_properties": {
@@ -45,7 +42,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         super().__init__(bddl_file_name, *args, **kwargs)
 
     def _load_fixtures_in_arena(self, mujoco_arena):
-        """Load the figures in this scene. If some extra process is required for the initial configurations, do it here."""
+        """Nothing extra to load in this simple problem."""
         for fixture_category in list(self.parsed_problem["fixtures"].keys()):
             if fixture_category == "kitchen_table":
                 continue
@@ -56,7 +53,6 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 )
 
     def _load_objects_in_arena(self, mujoco_arena):
-        """Load the movable objects in this scene."""
         objects_dict = self.parsed_problem["objects"]
         for category_name in objects_dict.keys():
             for object_name in objects_dict[category_name]:
@@ -65,7 +61,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 )
 
     def _load_sites_in_arena(self, mujoco_arena):
-        """Load the sites in this part. Sites are used for either visualization purpose, or specifying the target region / containing region."""
+        # Create site objects
         object_sites_dict = {}
         region_dict = self.parsed_problem["regions"]
         for object_region_name in list(region_dict.keys()):
@@ -134,7 +130,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                     self.visualization_sites_list.append(name)
 
     def _add_placement_initializer(self):
-        """Very simple implementation at the moment. Will need to upgrade for other relations later. Take a look at BDDLBaseDomain class, and modify the implementation logic accordingly based on your own need."""
+        """Very simple implementation at the moment. Will need to upgrade for other relations later."""
         super()._add_placement_initializer()
 
     def _check_success(self):
@@ -148,7 +144,6 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         return result
 
     def _eval_predicate(self, state):
-        """Evaluate each predicate. For the moment, we only consider unary and binary predicates."""
         if len(state) == 3:
             # Checking binary logical predicates
             predicate_fn_name = state[0]
@@ -168,17 +163,15 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
             )
 
     def _setup_references(self):
-        """Set up references for the objects. Add extra implementation here if the method in the parent class is not sufficient."""
         super()._setup_references()
 
     def _post_process(self):
-        """Post process the simulation step. Mainly for handling site visualization."""
         super()._post_process()
 
         self.set_visualization()
 
     def set_visualization(self):
-        """Set the visualization of the objects in the scene."""
+
         for object_name in self.visualization_sites_list:
             for _, (site_name, site_visible) in (
                 self.get_object(object_name).object_properties["vis_site_names"].items()
@@ -193,7 +186,6 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                     )
 
     def _setup_camera(self, mujoco_arena):
-        """Configure the camera as the workspace observation."""
         mujoco_arena.set_camera(
             camera_name="agentview",
             pos=[0.6586131746834771, 0.0, 1.6103500240372423],
@@ -208,4 +200,19 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         # For visualization purpose
         mujoco_arena.set_camera(
             camera_name="frontview", pos=[1.0, 0.0, 1.48], quat=[0.56, 0.43, 0.43, 0.56]
+        )
+        mujoco_arena.set_camera(
+            camera_name="galleryview",
+            pos=[2.844547668904445, 2.1279684793440667, 3.128616846013882],
+            quat=[
+                0.42261379957199097,
+                0.23374411463737488,
+                0.41646939516067505,
+                0.7702690958976746,
+            ],
+        )
+        mujoco_arena.set_camera(
+            camera_name="paperview",
+            pos=[2.1, 0.535, 2.075],
+            quat=[0.513, 0.353, 0.443, 0.645],
         )

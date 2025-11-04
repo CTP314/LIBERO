@@ -9,46 +9,40 @@ from libero.envs.utils import rectangle2xyrange
 
 
 @register_problem
-class YOUR_CLASS_NAME(BDDLBaseDomain):
+class Libero_Coffee_Table_Manipulation(BDDLBaseDomain):
     def __init__(self, bddl_file_name, *args, **kwargs):
-
-        # Configure the workspace
-        self.workspace_name = "kitchen_table"
+        self.workspace_name = "coffee_table"
         self.visualization_sites_list = []
-
-        self.kitchen_table_full_size = (1.0, 1.2, 0.05)
-        self.kitchen_table_offset = (0.0, 0, 0.90)
+        if "coffee_table_full_size" in kwargs:
+            self.coffee_table_full_size = coffee_table_full_size
+        else:
+            self.coffee_table_full_size = (0.70, 1.6, 0.024)
+        self.coffee_table_offset = (0, 0, 0.41)
         # For z offset of environment fixtures
-        self.z_offset = 0.01 - self.kitchen_table_full_size[2]
+        self.z_offset = 0.01 - self.coffee_table_full_size[2]
         kwargs.update(
-            {"robots": [f"Mounted{robot_name}" for robot_name in kwargs["robots"]]}
+            {"robots": [f"OnTheGround{robot_name}" for robot_name in kwargs["robots"]]}
         )
-        kwargs.update({"workspace_offset": self.kitchen_table_offset})
-        kwargs.update({"arena_type": "kitchen"})
-
-        # Specify the scene xml and scene properties. Specify the default here since not many people would need to change this actively.
-        if "scene_xml" not in kwargs or kwargs["scene_xml"] is None:
-            kwargs.update(
-                {"scene_xml": "scenes/libero_kitchen_tabletop_base_style.xml"}
-            )
-        if "scene_properties" not in kwargs or kwargs["scene_properties"] is None:
-            # The scene properties need to be specified in libero/envs/arenas/style.py.
-            kwargs.update(
-                {
-                    "scene_properties": {
-                        "floor_style": "gray-ceramic",
-                        "wall_style": "yellow-linen",
-                    }
-                }
-            )
+        kwargs.update({"workspace_offset": self.coffee_table_offset})
+        kwargs.update({"arena_type": "coffee_table"})
+        kwargs.update(
+            {
+                "scene_xml": "scenes/libero_coffee_table_base_style.xml",
+                "scene_properties": {
+                    "floor_style": "wood-plank",
+                    "wall_style": "light-gray-plaster",
+                },
+            }
+        )
 
         super().__init__(bddl_file_name, *args, **kwargs)
 
     def _load_fixtures_in_arena(self, mujoco_arena):
-        """Load the figures in this scene. If some extra process is required for the initial configurations, do it here."""
+        """Nothing extra to load in this simple problem."""
         for fixture_category in list(self.parsed_problem["fixtures"].keys()):
-            if fixture_category == "kitchen_table":
+            if fixture_category == "coffee_table":
                 continue
+
             for fixture_instance in self.parsed_problem["fixtures"][fixture_category]:
                 self.fixtures_dict[fixture_instance] = get_object_fn(fixture_category)(
                     name=fixture_instance,
@@ -56,7 +50,6 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 )
 
     def _load_objects_in_arena(self, mujoco_arena):
-        """Load the movable objects in this scene."""
         objects_dict = self.parsed_problem["objects"]
         for category_name in objects_dict.keys():
             for object_name in objects_dict[category_name]:
@@ -65,31 +58,31 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                 )
 
     def _load_sites_in_arena(self, mujoco_arena):
-        """Load the sites in this part. Sites are used for either visualization purpose, or specifying the target region / containing region."""
+        # Create site objects
         object_sites_dict = {}
         region_dict = self.parsed_problem["regions"]
         for object_region_name in list(region_dict.keys()):
 
-            if "kitchen_table" in object_region_name:
+            if "coffee_table" in object_region_name:
                 ranges = region_dict[object_region_name]["ranges"][0]
                 assert ranges[2] >= ranges[0] and ranges[3] >= ranges[1]
                 zone_size = ((ranges[2] - ranges[0]) / 2, (ranges[3] - ranges[1]) / 2)
                 zone_centroid_xy = (
-                    (ranges[2] + ranges[0]) / 2 + self.workspace_offset[0],
-                    (ranges[3] + ranges[1]) / 2 + self.workspace_offset[1],
+                    (ranges[2] + ranges[0]) / 2,
+                    (ranges[3] + ranges[1]) / 2,
                 )
                 target_zone = TargetZone(
                     name=object_region_name,
                     rgba=region_dict[object_region_name]["rgba"],
                     zone_size=zone_size,
-                    z_offset=self.workspace_offset[2],
                     zone_centroid_xy=zone_centroid_xy,
                 )
                 object_sites_dict[object_region_name] = target_zone
-                mujoco_arena.table_body.append(
+
+                mujoco_arena.coffee_table_body.append(
                     new_site(
                         name=target_zone.name,
-                        pos=target_zone.pos + np.array([0.0, 0.0, -0.90]),
+                        pos=target_zone.pos,
                         quat=target_zone.quat,
                         rgba=target_zone.rgba,
                         size=target_zone.size,
@@ -134,7 +127,7 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                     self.visualization_sites_list.append(name)
 
     def _add_placement_initializer(self):
-        """Very simple implementation at the moment. Will need to upgrade for other relations later. Take a look at BDDLBaseDomain class, and modify the implementation logic accordingly based on your own need."""
+        """Very simple implementation at the moment. Will need to upgrade for other relations later."""
         super()._add_placement_initializer()
 
     def _check_success(self):
@@ -148,7 +141,6 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
         return result
 
     def _eval_predicate(self, state):
-        """Evaluate each predicate. For the moment, we only consider unary and binary predicates."""
         if len(state) == 3:
             # Checking binary logical predicates
             predicate_fn_name = state[0]
@@ -168,17 +160,15 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
             )
 
     def _setup_references(self):
-        """Set up references for the objects. Add extra implementation here if the method in the parent class is not sufficient."""
         super()._setup_references()
 
     def _post_process(self):
-        """Post process the simulation step. Mainly for handling site visualization."""
         super()._post_process()
 
         self.set_visualization()
 
     def set_visualization(self):
-        """Set the visualization of the objects in the scene."""
+
         for object_name in self.visualization_sites_list:
             for _, (site_name, site_visible) in (
                 self.get_object(object_name).object_properties["vis_site_names"].items()
@@ -193,19 +183,28 @@ class YOUR_CLASS_NAME(BDDLBaseDomain):
                     )
 
     def _setup_camera(self, mujoco_arena):
-        """Configure the camera as the workspace observation."""
         mujoco_arena.set_camera(
-            camera_name="agentview",
-            pos=[0.6586131746834771, 0.0, 1.6103500240372423],
+            camera_name="agentview", pos=[1.5, 0.0, 0.9], quat=[0.56, 0.43, 0.43, 0.56]
+        )
+        mujoco_arena.set_camera(
+            camera_name="galleryview",
+            pos=[2.844547668904445, 2.1279684793440667, 3.128616846013882],
+            quat=[
+                0.42261379957199097,
+                0.23374411463737488,
+                0.41646939516067505,
+                0.7702690958976746,
+            ],
+        )
+
+        # robosuite's default agentview camera configuration
+        mujoco_arena.set_camera(
+            camera_name="canonical_agentview",
+            pos=[0.5386131746834771, 0.0, 0.7903500240372423],
             quat=[
                 0.6380177736282349,
                 0.3048497438430786,
                 0.30484986305236816,
                 0.6380177736282349,
             ],
-        )
-
-        # For visualization purpose
-        mujoco_arena.set_camera(
-            camera_name="frontview", pos=[1.0, 0.0, 1.48], quat=[0.56, 0.43, 0.43, 0.56]
         )
